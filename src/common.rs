@@ -1,9 +1,9 @@
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::path::PathBuf;
 use std::env;
 use std::fs;
 use std::io;
-use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
 use uuid7::Uuid;
 
 // Core Data Structures
@@ -12,7 +12,7 @@ use uuid7::Uuid;
 pub enum RebootStrategy {
     No,
     Always,
-    IfRequested
+    IfRequested,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, Hash)]
@@ -51,20 +51,20 @@ pub struct Configuration {
     pub services: Option<HashMap<String, ServiceAction>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub dependency_map: Option<HashMap<String, Vec<String>>>,
-    pub reboot: RebootStrategy
+    pub reboot: RebootStrategy,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Composition {
     pub desc: String,
-    pub configurations: Vec<String>
+    pub configurations: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Persona {
     pub name: String,
     pub id: Uuid,
-    pub compositions: Vec<String>
+    pub compositions: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -176,14 +176,13 @@ pub fn interpolate_env_vars(input: &str) -> String {
 /// Load a TOML configuration from a file
 pub fn load_toml<T: serde::de::DeserializeOwned>(path: &PathBuf) -> io::Result<T> {
     let contents = fs::read_to_string(path)?;
-    toml::from_str(&contents)
-        .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
+    toml::from_str(&contents).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
 }
 
 /// Save a TOML configuration to a file
 pub fn save_toml<T: serde::Serialize>(path: &PathBuf, data: &T) -> io::Result<()> {
-    let contents = toml::to_string_pretty(data)
-        .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+    let contents =
+        toml::to_string_pretty(data).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
     fs::write(path, contents)
 }
 

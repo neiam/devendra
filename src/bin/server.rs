@@ -1,24 +1,24 @@
-use devendra::server::{self, ServerConfig};
+use axum::{Json, Router, extract::State, http::StatusCode, routing::post};
+use clap::Parser;
 use devendra::common::*;
+use devendra::server::{self, ServerConfig};
+use sqlx::sqlite::{SqliteConnectOptions, SqlitePool};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use axum::{
-    extract::State,
-    http::StatusCode,
-    routing::post,
-    Json, Router,
-};
-use sqlx::sqlite::{SqlitePool, SqliteConnectOptions};
-use clap::Parser;
 
 #[derive(Parser)]
 #[command(name = "devendra-server")]
 #[command(about = "Devendra configuration management server", long_about = None)]
 struct Cli {
     /// Path to server configuration file
-    #[arg(short, long, env = "CONFIG_PATH", default_value = "/etc/devendra/server.toml")]
+    #[arg(
+        short,
+        long,
+        env = "CONFIG_PATH",
+        default_value = "/etc/devendra/server.toml"
+    )]
     config: PathBuf,
 
     /// Data directory for repos and database
@@ -44,7 +44,7 @@ async fn main() {
     tracing_subscriber::fmt()
         .with_env_filter(
             tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("info"))
+                .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("info")),
         )
         .init();
 
@@ -63,7 +63,11 @@ async fn main() {
         match load_toml(&config_path) {
             Ok(c) => c,
             Err(e) => {
-                tracing::error!("Failed to load server configuration from {}: {}", config_path.display(), e);
+                tracing::error!(
+                    "Failed to load server configuration from {}: {}",
+                    config_path.display(),
+                    e
+                );
                 tracing::error!("Exiting...");
                 std::process::exit(1);
             }
@@ -87,7 +91,9 @@ async fn main() {
         match save_toml(&config_path, &default_config) {
             Ok(_) => {
                 tracing::info!("Default configuration saved to {}", config_path.display());
-                tracing::info!("Please edit this file to add your git repositories and adjust settings");
+                tracing::info!(
+                    "Please edit this file to add your git repositories and adjust settings"
+                );
             }
             Err(e) => {
                 tracing::error!("Failed to save default configuration: {}", e);
@@ -107,7 +113,9 @@ async fn main() {
 
     // Initialize database
     tracing::info!("Initializing database...");
-    let db = init_database(&db_path.to_string_lossy()).await.expect("Failed to initialize database");
+    let db = init_database(&db_path.to_string_lossy())
+        .await
+        .expect("Failed to initialize database");
 
     // Initialize shared state
     let state = AppState {
@@ -126,7 +134,6 @@ async fn main() {
 
     // Start git sync task
     tokio::spawn(async move {
-
         loop {
             tracing::debug!("Git Sync Cycle");
 
@@ -169,8 +176,14 @@ async fn main() {
                 }
             }
 
-            tracing::debug!("Git sync complete. Sleeping for {} seconds...", sync_config.sync_interval_secs);
-            tokio::time::sleep(tokio::time::Duration::from_secs(sync_config.sync_interval_secs)).await;
+            tracing::debug!(
+                "Git sync complete. Sleeping for {} seconds...",
+                sync_config.sync_interval_secs
+            );
+            tokio::time::sleep(tokio::time::Duration::from_secs(
+                sync_config.sync_interval_secs,
+            ))
+            .await;
         }
     });
 
@@ -189,9 +202,7 @@ async fn main() {
         .await
         .expect("Failed to bind to address");
 
-    axum::serve(listener, app)
-        .await
-        .expect("Server failed");
+    axum::serve(listener, app).await.expect("Server failed");
 }
 
 // Database initialization
@@ -278,8 +289,7 @@ async fn handle_register(
 
     let is_single_use = {
         let tokens = state.registration_tokens.read().await;
-        let token_data = tokens.get(&req.token)
-            .ok_or(StatusCode::UNAUTHORIZED)?;
+        let token_data = tokens.get(&req.token).ok_or(StatusCode::UNAUTHORIZED)?;
 
         // Check if token is expired
         if token_data.expires_at < now {
@@ -337,13 +347,12 @@ async fn handle_check(
     tracing::debug!("Configuration check from agent: {}", req.agent_id);
 
     // Verify agent exists and get persona
-    let agent_row: Option<(String,)> = sqlx::query_as(
-        "SELECT persona_name FROM agents WHERE id = ?"
-    )
-    .bind(req.agent_id.to_string())
-    .fetch_optional(&state.db)
-    .await
-    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    let agent_row: Option<(String,)> =
+        sqlx::query_as("SELECT persona_name FROM agents WHERE id = ?")
+            .bind(req.agent_id.to_string())
+            .fetch_optional(&state.db)
+            .await
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     let persona_name = match agent_row {
         Some((name,)) => name,
@@ -409,7 +418,11 @@ async fn handle_check(
         }
     }
 
-    tracing::info!("Returning {} configuration updates for agent {}", updates.len(), req.agent_id);
+    tracing::info!(
+        "Returning {} configuration updates for agent {}",
+        updates.len(),
+        req.agent_id
+    );
 
     Ok(Json(ConfigurationCheckResponse {
         updates_available: updates,
@@ -421,7 +434,8 @@ async fn handle_telemetry(
     State(state): State<AppState>,
     Json(telemetry): Json<AgentTelemetry>,
 ) -> StatusCode {
-    tracing::debug!("Telemetry from agent {}: hostname={}, uptime={}s",
+    tracing::debug!(
+        "Telemetry from agent {}: hostname={}, uptime={}s",
         telemetry.agent_id,
         telemetry.hostname,
         telemetry.uptime_secs
@@ -458,7 +472,8 @@ async fn handle_result(
     State(state): State<AppState>,
     Json(result): Json<ConfigurationApplicationResult>,
 ) -> StatusCode {
-    tracing::info!("Configuration result from agent {}: {} - {:?}",
+    tracing::info!(
+        "Configuration result from agent {}: {} - {:?}",
         result.agent_id,
         result.configuration_name,
         result.status

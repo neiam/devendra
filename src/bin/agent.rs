@@ -1,18 +1,23 @@
+use base64::{Engine as _, engine::general_purpose};
+use clap::{Parser, Subcommand};
 use devendra::agent::AgentConfig;
 use devendra::common::*;
-use clap::{Parser, Subcommand};
-use std::path::PathBuf;
-use std::collections::HashMap;
 use ed25519_dalek::{SigningKey, VerifyingKey};
 use rand::rngs::OsRng;
-use base64::{Engine as _, engine::general_purpose};
+use std::collections::HashMap;
+use std::path::PathBuf;
 
 #[derive(Parser)]
 #[command(name = "devendra-agent")]
 #[command(about = "Devendra configuration management agent", long_about = None)]
 struct Cli {
     /// Path to agent configuration file
-    #[arg(short, long, env = "CONFIG_PATH", default_value = "/etc/devendra/agent.toml")]
+    #[arg(
+        short,
+        long,
+        env = "CONFIG_PATH",
+        default_value = "/etc/devendra/agent.toml"
+    )]
     config: PathBuf,
 
     /// Data directory for storing configurations
@@ -48,14 +53,18 @@ fn main() {
     tracing_subscriber::fmt()
         .with_env_filter(
             tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("info"))
+                .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("info")),
         )
         .init();
 
     let cli = Cli::parse();
 
     match &cli.command {
-        Commands::Register { token, server_url, persona } => {
+        Commands::Register {
+            token,
+            server_url,
+            persona,
+        } => {
             register_agent(&cli.config, token, server_url, persona);
         }
         Commands::Run => {
@@ -112,7 +121,9 @@ async fn register_agent(config_path: &PathBuf, token: &str, server_url: &str, pe
         Ok(resp) => resp,
         Err(e) => {
             tracing::error!("Failed to connect to server: {}", e);
-            tracing::error!("Please check that the server URL is correct and the server is running.");
+            tracing::error!(
+                "Please check that the server URL is correct and the server is running."
+            );
             std::process::exit(1);
         }
     };
@@ -169,7 +180,11 @@ async fn run_agent(config_path: &PathBuf, data_dir: &PathBuf) {
     let config: AgentConfig = match load_toml(config_path) {
         Ok(c) => c,
         Err(e) => {
-            tracing::error!("Failed to load agent configuration from {}: {}", config_path.display(), e);
+            tracing::error!(
+                "Failed to load agent configuration from {}: {}",
+                config_path.display(),
+                e
+            );
             tracing::error!("Run 'devendra-agent register' first to register this agent.");
             std::process::exit(1);
         }
@@ -198,7 +213,9 @@ async fn run_agent(config_path: &PathBuf, data_dir: &PathBuf) {
         tracing::debug!("Agent Poll Cycle");
 
         // Poll server for configuration updates
-        if let Err(e) = poll_configurations(&client, &config, &mut current_revisions, data_dir).await {
+        if let Err(e) =
+            poll_configurations(&client, &config, &mut current_revisions, data_dir).await
+        {
             tracing::error!("Failed to poll configurations: {}", e);
         }
 
@@ -207,7 +224,10 @@ async fn run_agent(config_path: &PathBuf, data_dir: &PathBuf) {
             tracing::error!("Failed to send telemetry: {}", e);
         }
 
-        tracing::debug!("Poll cycle complete. Sleeping for {} seconds...", config.poll_interval_secs);
+        tracing::debug!(
+            "Poll cycle complete. Sleeping for {} seconds...",
+            config.poll_interval_secs
+        );
         tokio::time::sleep(tokio::time::Duration::from_secs(config.poll_interval_secs)).await;
     }
 }
@@ -225,11 +245,7 @@ async fn poll_configurations(
         current_revisions: current_revisions.clone(),
     };
 
-    let response = client
-        .post(&check_url)
-        .json(&check_request)
-        .send()
-        .await?;
+    let response = client.post(&check_url).json(&check_request).send().await?;
 
     if !response.status().is_success() {
         return Err(format!("Server returned status: {}", response.status()).into());
@@ -242,7 +258,10 @@ async fn poll_configurations(
         return Ok(());
     }
 
-    tracing::info!("Received {} configuration updates", check_response.updates_available.len());
+    tracing::info!(
+        "Received {} configuration updates",
+        check_response.updates_available.len()
+    );
 
     // Apply each configuration
     for update in check_response.updates_available {
@@ -253,38 +272,45 @@ async fn poll_configurations(
         std::fs::create_dir_all(&config_dir)?;
 
         // Execute configuration
-        let result = match devendra::agent::execute_configuration(&update.configuration, &config_dir) {
-            Ok(needs_reboot) => {
-                tracing::info!("Configuration applied successfully. Needs reboot: {}", needs_reboot);
-                current_revisions.insert(update.configuration_name.clone(), update.new_revision.clone());
+        let result =
+            match devendra::agent::execute_configuration(&update.configuration, &config_dir) {
+                Ok(needs_reboot) => {
+                    tracing::info!(
+                        "Configuration applied successfully. Needs reboot: {}",
+                        needs_reboot
+                    );
+                    current_revisions.insert(
+                        update.configuration_name.clone(),
+                        update.new_revision.clone(),
+                    );
 
-                ConfigurationApplicationResult {
-                    agent_id: config.id,
-                    configuration_name: update.configuration_name.clone(),
-                    status: ApplicationStatus::Success,
-                    error_message: None,
-                    timestamp: std::time::SystemTime::now()
-                        .duration_since(std::time::UNIX_EPOCH)
-                        .unwrap()
-                        .as_secs() as i64,
-                    retry_count: 0,
+                    ConfigurationApplicationResult {
+                        agent_id: config.id,
+                        configuration_name: update.configuration_name.clone(),
+                        status: ApplicationStatus::Success,
+                        error_message: None,
+                        timestamp: std::time::SystemTime::now()
+                            .duration_since(std::time::UNIX_EPOCH)
+                            .unwrap()
+                            .as_secs() as i64,
+                        retry_count: 0,
+                    }
                 }
-            }
-            Err(e) => {
-                tracing::error!("Configuration failed: {}", e);
-                ConfigurationApplicationResult {
-                    agent_id: config.id,
-                    configuration_name: update.configuration_name.clone(),
-                    status: ApplicationStatus::Failed,
-                    error_message: Some(e.to_string()),
-                    timestamp: std::time::SystemTime::now()
-                        .duration_since(std::time::UNIX_EPOCH)
-                        .unwrap()
-                        .as_secs() as i64,
-                    retry_count: 0,
+                Err(e) => {
+                    tracing::error!("Configuration failed: {}", e);
+                    ConfigurationApplicationResult {
+                        agent_id: config.id,
+                        configuration_name: update.configuration_name.clone(),
+                        status: ApplicationStatus::Failed,
+                        error_message: Some(e.to_string()),
+                        timestamp: std::time::SystemTime::now()
+                            .duration_since(std::time::UNIX_EPOCH)
+                            .unwrap()
+                            .as_secs() as i64,
+                        retry_count: 0,
+                    }
                 }
-            }
-        };
+            };
 
         // Send result to server
         let result_url = format!("{}/api/result", config.server_url);

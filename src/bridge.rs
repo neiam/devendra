@@ -1,7 +1,6 @@
 use serde::{Deserialize, Serialize};
 use uuid7::Uuid;
 
-
 // Bridge Configuration
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

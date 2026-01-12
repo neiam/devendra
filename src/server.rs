@@ -1,10 +1,10 @@
+use git2::{Cred, FetchOptions, RemoteCallbacks, Repository, build::RepoBuilder};
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::path::PathBuf;
 use std::fs;
 use std::io;
-use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
 use uuid7::Uuid;
-use git2::{Repository, Cred, RemoteCallbacks, FetchOptions, build::RepoBuilder};
 
 use crate::common::*;
 
@@ -121,7 +121,9 @@ pub fn sync_git_repository(
 // Repository Parsing
 
 /// Load all configurations from a git repository
-pub fn load_configurations_from_repo(repo_path: &PathBuf) -> io::Result<HashMap<String, Configuration>> {
+pub fn load_configurations_from_repo(
+    repo_path: &PathBuf,
+) -> io::Result<HashMap<String, Configuration>> {
     let mut configs = HashMap::new();
     let configs_dir = repo_path.join("configurations");
 
@@ -136,15 +138,17 @@ pub fn load_configurations_from_repo(repo_path: &PathBuf) -> io::Result<HashMap<
         if path.is_dir() {
             let config_file = path.join("config.toml");
             if config_file.exists() {
-                let config_name = path.file_name()
-                    .and_then(|n| n.to_str())
-                    .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "Invalid directory name"))?;
+                let config_name = path.file_name().and_then(|n| n.to_str()).ok_or_else(|| {
+                    io::Error::new(io::ErrorKind::InvalidData, "Invalid directory name")
+                })?;
 
                 match load_configuration(&config_file) {
                     Ok(config) => {
                         configs.insert(config_name.to_string(), config);
                     }
-                    Err(e) => tracing::error!("Failed to load configuration {}: {}", config_name, e),
+                    Err(e) => {
+                        tracing::error!("Failed to load configuration {}: {}", config_name, e)
+                    }
                 }
             }
         }
@@ -154,7 +158,9 @@ pub fn load_configurations_from_repo(repo_path: &PathBuf) -> io::Result<HashMap<
 }
 
 /// Load all compositions from a git repository
-pub fn load_compositions_from_repo(repo_path: &PathBuf) -> io::Result<HashMap<String, Composition>> {
+pub fn load_compositions_from_repo(
+    repo_path: &PathBuf,
+) -> io::Result<HashMap<String, Composition>> {
     let mut compositions = HashMap::new();
     let compositions_dir = repo_path.join("compositions");
 
@@ -167,7 +173,8 @@ pub fn load_compositions_from_repo(repo_path: &PathBuf) -> io::Result<HashMap<St
         let path = entry.path();
 
         if path.extension().and_then(|s| s.to_str()) == Some("toml") {
-            let composition_name = path.file_stem()
+            let composition_name = path
+                .file_stem()
                 .and_then(|n| n.to_str())
                 .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "Invalid file name"))?;
 
@@ -197,7 +204,8 @@ pub fn load_personas_from_repo(repo_path: &PathBuf) -> io::Result<HashMap<String
         let path = entry.path();
 
         if path.extension().and_then(|s| s.to_str()) == Some("toml") {
-            let persona_name = path.file_stem()
+            let persona_name = path
+                .file_stem()
                 .and_then(|n| n.to_str())
                 .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "Invalid file name"))?;
 

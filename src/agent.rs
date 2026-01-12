@@ -1,9 +1,9 @@
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::path::PathBuf;
-use std::process::Command;
 use std::fs;
 use std::io;
-use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
+use std::process::Command;
 use uuid7::Uuid;
 
 use crate::common::*;
@@ -26,9 +26,20 @@ pub struct AgentConfig {
 #[derive(Debug)]
 pub enum ExecutionError {
     Io(io::Error),
-    CommandFailed { command: String, exit_code: Option<i32>, stderr: String },
-    DependencyInstallFailed { package: String, error: String },
-    ServiceActionFailed { service: String, action: String, error: String },
+    CommandFailed {
+        command: String,
+        exit_code: Option<i32>,
+        stderr: String,
+    },
+    DependencyInstallFailed {
+        package: String,
+        error: String,
+    },
+    ServiceActionFailed {
+        service: String,
+        action: String,
+        error: String,
+    },
     TemplateError(String),
     UnsupportedPackageManager(String),
 }
@@ -43,13 +54,25 @@ impl std::fmt::Display for ExecutionError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             ExecutionError::Io(e) => write!(f, "IO error: {}", e),
-            ExecutionError::CommandFailed { command, exit_code, stderr } => {
-                write!(f, "Command '{}' failed with exit code {:?}: {}", command, exit_code, stderr)
+            ExecutionError::CommandFailed {
+                command,
+                exit_code,
+                stderr,
+            } => {
+                write!(
+                    f,
+                    "Command '{}' failed with exit code {:?}: {}",
+                    command, exit_code, stderr
+                )
             }
             ExecutionError::DependencyInstallFailed { package, error } => {
                 write!(f, "Failed to install package '{}': {}", package, error)
             }
-            ExecutionError::ServiceActionFailed { service, action, error } => {
+            ExecutionError::ServiceActionFailed {
+                service,
+                action,
+                error,
+            } => {
                 write!(f, "Failed to {} service '{}': {}", action, service, error)
             }
             ExecutionError::TemplateError(e) => write!(f, "Template error: {}", e),
@@ -69,9 +92,7 @@ fn detect_package_manager() -> Result<String, ExecutionError> {
     let managers = vec!["apt", "dnf", "yum", "zypper", "pacman", "brew"];
 
     for manager in managers {
-        let output = Command::new("which")
-            .arg(manager)
-            .output();
+        let output = Command::new("which").arg(manager).output();
 
         if let Ok(result) = output {
             if result.status.success() {
@@ -80,15 +101,23 @@ fn detect_package_manager() -> Result<String, ExecutionError> {
         }
     }
 
-    Err(ExecutionError::UnsupportedPackageManager("No supported package manager found".to_string()))
+    Err(ExecutionError::UnsupportedPackageManager(
+        "No supported package manager found".to_string(),
+    ))
 }
 
 /// Install dependencies using the system package manager
-pub fn install_dependencies(dependency_map: &HashMap<String, Vec<String>>) -> Result<(), ExecutionError> {
+pub fn install_dependencies(
+    dependency_map: &HashMap<String, Vec<String>>,
+) -> Result<(), ExecutionError> {
     let package_manager = detect_package_manager()?;
 
     if let Some(packages) = dependency_map.get(&package_manager) {
-        tracing::info!("Installing dependencies using {}: {:?}", package_manager, packages);
+        tracing::info!(
+            "Installing dependencies using {}: {:?}",
+            package_manager,
+            packages
+        );
 
         let install_cmd = match package_manager.as_str() {
             "apt" => vec!["apt-get", "install", "-y"],
@@ -133,7 +162,11 @@ pub fn copy_files(
         let source_path = config_dir.join(source);
         let dest_path = PathBuf::from(interpolate_env_vars(dest));
 
-        tracing::info!("Copying {} to {}", source_path.display(), dest_path.display());
+        tracing::info!(
+            "Copying {} to {}",
+            source_path.display(),
+            dest_path.display()
+        );
 
         if let Some(parent) = dest_path.parent() {
             fs::create_dir_all(parent)?;
@@ -155,7 +188,11 @@ pub fn render_templates(
         let source_path = config_dir.join(source);
         let dest_path = PathBuf::from(interpolate_env_vars(dest));
 
-        tracing::info!("Rendering template {} to {}", source_path.display(), dest_path.display());
+        tracing::info!(
+            "Rendering template {} to {}",
+            source_path.display(),
+            dest_path.display()
+        );
 
         let template_content = fs::read_to_string(&source_path)?;
         let mut rendered = template_content.clone();
@@ -183,10 +220,7 @@ pub fn render_templates(
 pub fn execute_command(command: &str) -> Result<(), ExecutionError> {
     tracing::info!("Executing command: {}", command);
 
-    let output = Command::new("sh")
-        .arg("-c")
-        .arg(command)
-        .output()?;
+    let output = Command::new("sh").arg("-c").arg(command).output()?;
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr).to_string();
@@ -262,7 +296,9 @@ pub fn perform_service_action(service: &str, action: &ServiceAction) -> Result<(
 }
 
 /// Perform all service actions
-pub fn perform_service_actions(services: &HashMap<String, ServiceAction>) -> Result<(), ExecutionError> {
+pub fn perform_service_actions(
+    services: &HashMap<String, ServiceAction>,
+) -> Result<(), ExecutionError> {
     for (service, action) in services {
         perform_service_action(service, action)?;
     }
@@ -323,9 +359,7 @@ pub fn execute_configuration(
     // Stage 9: Determine if reboot is needed
     let needs_reboot = match config.reboot {
         RebootStrategy::Always => true,
-        RebootStrategy::IfRequested => {
-            PathBuf::from("/var/run/reboot-required").exists()
-        }
+        RebootStrategy::IfRequested => PathBuf::from("/var/run/reboot-required").exists(),
         RebootStrategy::No => false,
     };
 
