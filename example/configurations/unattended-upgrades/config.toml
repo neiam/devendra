@@ -1,0 +1,6 @@
+desc = "Configuration for setting up unattended upgrades"
+
+[dependency_map]
+apt = ["unattended-upgrades"]
+
+reboot = "IfRequested"

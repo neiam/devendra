@@ -1,0 +1,6 @@
+desc = "Configuration that installs a package and runs a command on reboot if requested by apt"
+
+[dependency_map]
+apt = ["some-package"]
+
+reboot = "IfRequested"

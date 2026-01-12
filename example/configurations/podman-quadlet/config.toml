@@ -1,0 +1,17 @@
+desc = "Configuration for installing a quadlet systemd unit with podman"
+
+[variable_map]
+CONTAINER_NAME = "myapp"
+CONTAINER_IMAGE = "docker.io/library/nginx:latest"
+
+[file_map]
+"quadlet.container" = "/etc/containers/systemd/${CONTAINER_NAME}.container"
+
+commands = [
+    "systemctl daemon-reload"
+]
+
+[dependency_map]
+apt = ["podman"]
+
+reboot = "No"

@@ -1,0 +1,6 @@
+name = "tablet"
+
+compositions = [
+    "tablet-setup",
+    "secure-machine"
+]

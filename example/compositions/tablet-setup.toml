@@ -1,0 +1,8 @@
+desc = "Tablet setup with Plasma Mobile and required services"
+
+configurations = [
+    "plasma-mobile",
+    "sddm-themes",
+    "podman-quadlet",
+    "mosquitto-localhost"
+]

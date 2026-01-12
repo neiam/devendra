@@ -1,0 +1,6 @@
+desc = "Configuration that installs a package and runs a command on reboot"
+
+[dependency_map]
+apt = ["kernel-update-package"]
+
+reboot = "Always"

@@ -1,0 +1,11 @@
+desc = "Mosquitto MQTT broker with localhost-only configuration"
+
+[file_map]
+"mosquitto.conf" = "/etc/mosquitto/conf.d/localhost.conf"
+
+services = ["mosquitto"]
+
+[dependency_map]
+apt = ["mosquitto"]
+
+reboot = "No"

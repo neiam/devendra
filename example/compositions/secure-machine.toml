@@ -1,0 +1,7 @@
+desc = "Secure machine composition with hardening and auto-updates"
+
+configurations = [
+    "unattended-upgrades",
+    "firewall-configuration",
+    "ssh-hardening"
+]

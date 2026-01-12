@@ -1,0 +1,6 @@
+name = "laptop"
+
+compositions = [
+    "laptop-setup",
+    "secure-machine"
+]

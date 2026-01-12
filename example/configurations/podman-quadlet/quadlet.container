@@ -1,0 +1,14 @@
+[Unit]
+Description=${CONTAINER_NAME} container
+After=network-online.target
+
+[Container]
+Image=${CONTAINER_IMAGE}
+AutoUpdate=registry
+PublishPort=8080:80
+
+[Service]
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

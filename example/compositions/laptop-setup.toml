@@ -1,0 +1,9 @@
+desc = "Laptop setup with standard tooling and desktop environment"
+
+configurations = [
+    "standard-tooling",
+    "plasma-desktop",
+    "firefox",
+    "ed-editor",
+    "power-tooling"
+]

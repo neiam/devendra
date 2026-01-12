@@ -1,0 +1,10 @@
+desc = "Simple configuration that installs a package and runs a command"
+
+commands = [
+    "htop --version"
+]
+
+[dependency_map]
+apt = ["htop"]
+
+reboot = "No"
